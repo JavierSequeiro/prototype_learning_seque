@@ -1,0 +1,12 @@
+* Dataset built in Poland
+* Between 2019 and 2022
+* 256 cases/patients
+
+* Link to PUBMED --> https://pmc.ncbi.nlm.nih.gov/articles/PMC10830496/#Sec2
+
+
+@@@@@
+Issues
+@@@@@
+
+* Margin --> Multilabel Problem (Few data if we treat each combination, richer if we treat it independently) 
