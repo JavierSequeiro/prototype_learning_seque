@@ -131,7 +131,7 @@ class USG_Dataset(Dataset):
 
         self.transform = transforms.Compose([
                 # transforms.Resize(size=(img_size, img_size)),
-                transforms.Resize(size=(256, 256)),
+                transforms.Resize(size=(224, 224)),
                 transforms.ToTensor(),
                 # transforms.Normalize(mean=mean, std=std)
             ])
@@ -183,5 +183,77 @@ class USG_Dataset(Dataset):
             for k,v in multilabel_clasif.items():
                 if k in label_idx:
                     one_hot_label[v] = 1.0
+
+        return image, one_hot_label
+    
+
+class USG_Dataset_all_feat(Dataset):
+    def __init__(self, root_dir, mode='train', is_push=False, excel_file='US_breast_data_csv.xlsx', OA_transform:bool=False):
+        """
+        Args:
+            root_dir (str): Path to the dataset root.
+            mode (str): 'train' or 'test' - chooses which folder to load from.
+            csv_file (str): CSV file with 'filename,label' columns.
+            transform (callable, optional): Optional transform to be applied on a sample.
+        """
+        self.root_dir = os.path.join(root_dir, mode)
+        self.OAtransform = OA_transform
+        self.labels_df = pd.read_excel(os.path.join(root_dir, excel_file))
+        self.labels_df = self.labels_df[self.labels_df["Classification"] != "normal"]
+        self.feature_set = ["Shape", "Echogenicity", "Posterior_features"] # "Margin"
+
+        self.transform = transforms.Compose([
+                # transforms.Resize(size=(img_size, img_size)),
+                transforms.Resize(size=(224, 224)),
+                transforms.ToTensor(),
+                # transforms.Normalize(mean=mean, std=std)
+            ])
+
+        # Get all unique classes and map to indices
+        self.output_size = 0
+        self.classes = ["circumscribed","indistinct","angular","spiculated","microlobulated"]
+
+        for feature in self.feature_set:
+            for cls in sorted(self.labels_df[feature].unique()):
+                self.classes.append(cls)
+        # self.classes = sorted(self.labels_df[feature].unique())
+        self.class_to_idx = {cls: idx for idx, cls in enumerate(self.classes)}
+
+        self.samples = [
+            (row['Image_filename'], row["Margin"], self.class_to_idx[row["Shape"]], self.class_to_idx[row["Echogenicity"]], self.class_to_idx[row["Posterior_features"]])
+            for _, row in self.labels_df.iterrows()
+            if os.path.exists(os.path.join(self.root_dir, row['Image_filename']))]
+        
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        # filename, label_idx = self.samples[idx]
+        filename, margin, shape, echo, post_feat = self.samples[idx]
+        print(filename)
+        print(self.classes)
+        img_path = os.path.join(self.root_dir, filename)
+        image = Image.open(img_path).convert('L')
+        feat = [shape, echo, post_feat]
+        
+        one_hot_label = torch.zeros(len(self.classes))
+        for label_idx in feat: 
+            one_hot_label[label_idx] = 1.0
+
+        multilabel_clasif = {"indistinct":1,
+                                 "angular":2,
+                                 "spiculated":3,
+                                 "microlobulated":4}
+            
+        if not "not circumscribed" in margin:
+            one_hot_label[0] = 1.0
+        else:
+            for k,v in multilabel_clasif.items():
+                if k in margin:
+                    one_hot_label[v] = 1.0
+
+        # if self.transform:
+        #     image = self.transform(image)
+
 
         return image, one_hot_label
