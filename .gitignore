@@ -8,3 +8,6 @@ seque_code/baseline_exp/models
 seque_stuff.py
 requirements.txt
 general_stuff.txt
+
+data
+*.png
